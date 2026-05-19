@@ -20,7 +20,10 @@ if System.get_env("PHX_SERVER") do
   config :apex, ApexWeb.Endpoint, server: true
 end
 
-config :apex, ApexWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+config :apex, ApexWeb.Endpoint,
+  secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
+  http: [port: String.to_integer(System.get_env("PORT", "4000"))],
+  server: true   # ← required for releases
 
 if config_env() == :prod do
   # The secret key base is used to sign/encrypt cookies and other secrets.
