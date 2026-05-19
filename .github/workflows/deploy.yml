@@ -1,0 +1,114 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+
+env:
+  MIX_ENV: prod
+  ELIXIR_VERSION: "1.19.5"
+  OTP_VERSION: "27.3"
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: deps-${{ hashFiles('mix.lock') }}
+
+      - name: Install deps
+        run: mix deps.get --only test
+
+      - name: Run tests
+        run: mix test
+        env:
+          MIX_ENV: test
+
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-24.04
+    needs: test  # only deploys if tests pass
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: deps-${{ hashFiles('mix.lock') }}
+
+      - name: Install prod deps
+        run: mix deps.get --only prod
+
+      - name: Compile
+        run: mix compile
+
+      - name: Build assets
+        # Remove this step if you have no JS/CSS assets
+        run: |
+          mix assets.deploy
+
+      - name: Build release
+        run: mix release
+        env:
+          SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASE }}
+
+      - name: Create tarball
+        run: |
+          tar -czf apex.tar.gz -C _build/prod/rel apex
+
+      - name: Add SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add droplet to known_hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Upload tarball
+        run: |
+          scp apex.tar.gz deploy@${{ secrets.DROPLET_HOST }}:/opt/apex/apex.tar.gz
+
+      - name: Extract & restart
+        run: |
+          ssh deploy@${{ secrets.DROPLET_HOST }} '
+            set -e
+            cd /opt/apex
+
+            # Stop service gracefully
+            sudo systemctl stop apex || true
+
+            # Backup previous release
+            if [ -d bin ]; then
+              rm -rf apex_prev
+              cp -r . apex_prev --exclude=apex.tar.gz --exclude=apex_prev
+            fi
+
+            # Extract new release
+            tar -xzf apex.tar.gz --strip-components=1
+
+            # Start service
+            sudo systemctl start apex
+            sudo systemctl status apex --no-pager
+          '
