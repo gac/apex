@@ -20,11 +20,6 @@ if System.get_env("PHX_SERVER") do
   config :apex, ApexWeb.Endpoint, server: true
 end
 
-config :apex, ApexWeb.Endpoint,
-  secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))],
-  server: true   # ← required for releases
-
 if config_env() == :prod do
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
@@ -36,7 +31,12 @@ if config_env() == :prod do
       raise """
       environment variable SECRET_KEY_BASE is missing.
       You can generate one by calling: mix phx.gen.secret
-      """
+  """
+
+  config :apex, MyAppWeb.Endpoint,
+    secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
+    http: [port: String.to_integer(System.get_env("PORT", "4000"))],
+    server: true
 
   host = System.get_env("PHX_HOST") || "example.com"
 
