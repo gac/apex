@@ -33,7 +33,7 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
   """
 
-  config :apex, MyAppWeb.Endpoint,
+  config :apex, ApexWeb.Endpoint,
     secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
     http: [port: String.to_integer(System.get_env("PORT", "4000"))],
     server: true
