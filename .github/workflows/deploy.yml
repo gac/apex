@@ -91,20 +91,20 @@ jobs:
           scp apex.tar.gz deploy@${{ secrets.DROPLET_HOST }}:/opt/apex/apex.tar.gz
 
       - name: Extract & restart
-              run: |
-                ssh deploy@${{ secrets.DROPLET_HOST }} '
-                  set -e
-                  cd /opt/apex
+        run: |
+          ssh deploy@${{ secrets.DROPLET_HOST }} '
+            set -e
+            cd /opt/apex
 
-                  sudo systemctl stop apex || true
+            sudo systemctl stop apex || true
 
-                  # Backup previous release (rsync supports --exclude)
-                  if [ -d bin ]; then
-                    rsync -a --exclude=apex.tar.gz --exclude=apex_prev . apex_prev/
-                  fi
+            # Backup previous release (rsync supports --exclude)
+            if [ -d bin ]; then
+              rsync -a --exclude=apex.tar.gz --exclude=apex_prev . apex_prev/
+            fi
 
-                  tar -xzf apex.tar.gz --strip-components=1
+            tar -xzf apex.tar.gz --strip-components=1
 
-                  sudo systemctl start apex
-                  sudo systemctl status apex --no-pager
-                '
+            sudo systemctl start apex
+            sudo systemctl status apex --no-pager
+          '
