@@ -96,15 +96,11 @@ jobs:
             set -e
             cd /opt/apex
 
-            sudo systemctl stop apex || true
-
-            # Backup previous release (rsync supports --exclude)
             if [ -d bin ]; then
               rsync -a --exclude=apex.tar.gz --exclude=apex_prev . apex_prev/
             fi
 
             tar -xzf apex.tar.gz --strip-components=1
 
-            sudo systemctl start apex
-            sudo systemctl status apex --no-pager
+            sudo /usr/local/bin/apex-deploy
           '
